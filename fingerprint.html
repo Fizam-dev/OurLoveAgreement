@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>FingerScan — Sistem Pengesahan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,500&family=Caveat:wght@500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0a12;
+      --surface: #12121f;
+      --card: #1a1a2e;
+      --border: rgba(100,120,255,0.2);
+      --accent: #6c63ff;
+      --accent2: #ff6b8a;
+      --glow: rgba(108,99,255,0.45);
+      --text: #e8e8f4;
+      --muted: #7a7a9a;
+      --success: #4ade80;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 0 40px;
+      overflow-x: hidden;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      width: 100%;
+      padding: 18px 20px 14px;
+      background: rgba(18,18,31,0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      position: sticky;
+      top: 0;
+      z-index: 99;
+    }
+    .header-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg,#6c63ff,#ff6b8a);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .header-text h1 { font-size: 15px; font-weight: 700; letter-spacing: .4px; }
+    .header-text p  { font-size: 10px; color: var(--muted); letter-spacing: .6px; text-transform: uppercase; }
+
+    /* ── MAIN WRAPPER ── */
+    .main { width: 100%; max-width: 430px; padding: 24px 18px 0; display: flex; flex-direction: column; gap: 22px; }
+
+    /* ── STATUS BAR ── */
+    .status-bar {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .status-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+      animation: pulse-dot 2s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+    @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.85)} }
+    .status-text { font-size: 12px; color: var(--muted); }
+    .status-text span { color: var(--text); font-weight: 600; font-size: 13px; display: block; }
+
+    /* ── SCAN CARD ── */
+    .scan-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 32px 24px 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+    .scan-card::before {
+      content: '';
+      position: absolute; top: -60px; left: 50%; transform: translateX(-50%);
+      width: 220px; height: 220px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(108,99,255,.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .scan-title { font-size: 18px; font-weight: 700; letter-spacing: .3px; }
+    .scan-sub   { font-size: 12px; color: var(--muted); text-align: center; line-height: 1.6; margin-top: -14px; }
+
+    /* ── FINGER BUTTON ── */
+    .btn-wrap {
+      position: relative;
+      width: 160px; height: 160px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 2px solid rgba(108,99,255,.25);
+      animation: spin-ring 6s linear infinite;
+    }
+    .ring:nth-child(1){ width:160px;height:160px; }
+    .ring:nth-child(2){ width:140px;height:140px;animation-direction:reverse;animation-duration:4s; border-color:rgba(255,107,138,.2);}
+    @keyframes spin-ring{ from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+
+    .scan-btn {
+      position: relative;
+      width: 124px; height: 124px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #1e1e35, #12122a);
+      border: 2px solid rgba(108,99,255,.5);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column;
+      gap: 4px;
+      outline: none;
+      -webkit-user-select: none; user-select: none;
+      transition: border-color .3s, box-shadow .3s;
+      box-shadow: 0 0 20px rgba(108,99,255,.15), inset 0 0 20px rgba(0,0,0,.4);
+      z-index: 2;
+      touch-action: none;
+    }
+    .scan-btn:hover, .scan-btn.scanning {
+      border-color: var(--accent);
+      box-shadow: 0 0 36px var(--glow), inset 0 0 20px rgba(108,99,255,.08);
+    }
+    .scan-btn.done {
+      border-color: var(--success);
+      box-shadow: 0 0 36px rgba(74,222,128,.4), inset 0 0 20px rgba(74,222,128,.05);
+    }
+    .finger-svg { width: 54px; height: 54px; transition: opacity .3s; }
+    .finger-svg path { stroke: var(--accent); fill: none; stroke-width: 1.8; stroke-linecap: round; }
+    .scan-btn.done .finger-svg path { stroke: var(--success); }
+    .btn-label { font-size: 9px; color: var(--muted); letter-spacing: .6px; text-transform: uppercase; }
+
+    /* Progress Arc */
+    .progress-wrap { position:absolute; width:124px;height:124px; z-index:3; pointer-events:none; }
+    .progress-circ { transform: rotate(-90deg); }
+    .progress-track { fill:none; stroke:rgba(108,99,255,.1); stroke-width:3; }
+    .progress-fill  {
+      fill: none;
+      stroke: url(#grad);
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-dasharray: 360;
+      stroke-dashoffset: 360;
+      transition: stroke-dashoffset .06s linear;
+    }
+
+    /* Scan lines overlay */
+    .scan-lines {
+      position: absolute;
+      left: 0; top: 0; width: 100%; height: 100%;
+      border-radius: 50%;
+      overflow: hidden;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .3s;
+      z-index: 1;
+    }
+    .scan-btn.scanning .scan-lines { opacity: 1; }
+    .scan-line {
+      position: absolute;
+      left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(108,99,255,.7), transparent);
+      animation: scan-sweep 1.2s ease-in-out infinite;
+    }
+    .scan-line:nth-child(2){ animation-delay: .4s; opacity: .5; }
+    .scan-line:nth-child(3){ animation-delay: .8s; opacity: .3; }
+    @keyframes scan-sweep{ 0%{top:5%} 100%{top:90%} }
+
+    /* ── PROGRESS TEXT ── */
+    .progress-text {
+      font-size: 13px;
+      color: var(--muted);
+      min-height: 20px;
+      text-align: center;
+      transition: color .3s;
+    }
+    .progress-text.active { color: var(--accent); }
+    .progress-text.done   { color: var(--success); font-weight: 600; }
+
+    /* ── SUCCESS BADGE ── */
+    .success-badge {
+      background: rgba(74,222,128,.08);
+      border: 1px solid rgba(74,222,128,.3);
+      border-radius: 14px;
+      padding: 16px 20px;
+      text-align: center;
+      display: none;
+      animation: fade-up .5s ease forwards;
+    }
+    .success-badge.show { display: block; }
+    .success-badge .badge-icon { font-size: 30px; margin-bottom: 8px; }
+    .success-badge h3 { font-size: 14px; color: var(--success); font-weight: 700; margin-bottom: 4px; }
+    .success-badge p  { font-size: 12px; color: var(--muted); line-height: 1.5; }
+    @keyframes fade-up { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+
+    /* ── LETTER CARD ── */
+    .letter-wrap {
+      display: none;
+      animation: fade-up .7s ease forwards;
+    }
+    .letter-wrap.show { display: block; }
+
+    .letter-card {
+      background: linear-gradient(160deg, #1e1428, #12121f);
+      border: 1px solid rgba(255,107,138,.3);
+      border-radius: 24px;
+      padding: 28px 22px 32px;
+      position: relative;
+      overflow: hidden;
+    }
+    .letter-card::before {
+      content: '❦';
+      position: absolute; top: -10px; right: 18px;
+      font-size: 80px;
+      color: rgba(255,107,138,.05);
+      pointer-events: none;
+    }
+    .letter-stamp {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 20px;
+    }
+    .stamp-box {
+      background: linear-gradient(135deg, rgba(255,107,138,.2), rgba(108,99,255,.2));
+      border: 1px solid rgba(255,107,138,.3);
+      border-radius: 10px;
+      padding: 6px 12px;
+      font-size: 10px;
+      letter-spacing: .8px;
+      text-transform: uppercase;
+      color: var(--accent2);
+      font-weight: 600;
+    }
+    .stamp-date { font-size: 10px; color: var(--muted); }
+
+    .letter-heading {
+      font-family: 'Playfair Display', serif;
+      font-size: 22px;
+      font-style: italic;
+      color: var(--accent2);
+      line-height: 1.3;
+      margin-bottom: 18px;
+      text-align: center;
+    }
+
+    .letter-body {
+      font-family: 'Caveat', cursive;
+      font-size: 17px;
+      color: #d4c8e0;
+      line-height: 1.85;
+    }
+    .letter-body p { margin-bottom: 14px; }
+    .letter-body .highlight {
+      color: #ffb3c6;
+      font-weight: 700;
+      font-size: 18px;
+    }
+    .letter-body .verse {
+      background: rgba(108,99,255,.08);
+      border-left: 3px solid var(--accent2);
+      padding: 10px 14px;
+      border-radius: 0 10px 10px 0;
+      margin: 14px 0;
+      font-size: 16px;
+      color: #e8c4d4;
+    }
+    .letter-sign {
+      margin-top: 22px;
+      text-align: right;
+    }
+    .letter-sign .sign-label { font-size: 11px; color: var(--muted); letter-spacing: .5px; }
+    .letter-sign .sign-name  {
+      font-family: 'Caveat', cursive;
+      font-size: 24px;
+      color: var(--accent2);
+      font-weight: 700;
+    }
+    .heart-divider {
+      text-align: center;
+      color: var(--accent2);
+      font-size: 18px;
+      letter-spacing: 6px;
+      margin: 16px 0;
+      opacity: .7;
+    }
+
+    /* ── DATABASE SECTION ── */
+    .db-section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 24px 18px;
+    }
+    .db-header {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 18px;
+    }
+    .db-header h2 { font-size: 14px; font-weight: 700; }
+    .db-tag {
+      font-size: 9px; padding: 3px 8px;
+      background: rgba(108,99,255,.15);
+      border: 1px solid rgba(108,99,255,.3);
+      border-radius: 20px;
+      color: var(--accent);
+      letter-spacing: .5px;
+      text-transform: uppercase;
+    }
+
+    .db-records { display: flex; flex-direction: column; gap: 14px; }
+    .db-row {
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      animation: fade-up .5s ease both;
+    }
+    .db-row:nth-child(2){ animation-delay:.1s; }
+
+    .finger-canvas-wrap {
+      position: relative;
+      flex-shrink: 0;
+    }
+    .fp-canvas {
+      width: 64px; height: 80px;
+      border-radius: 12px;
+      border: 1.5px solid rgba(108,99,255,.35);
+      background: #0e0e1f;
+    }
+    .fp-verified {
+      position: absolute;
+      bottom: -5px; right: -5px;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: var(--success);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px;
+      border: 2px solid var(--card);
+    }
+
+    .db-info {}
+    .db-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+    .db-meta { font-size: 11px; color: var(--muted); line-height: 1.6; }
+    .db-meta span { color: var(--accent); }
+    .db-status {
+      margin-top: 6px;
+      display: inline-flex; align-items: center; gap: 4px;
+      background: rgba(74,222,128,.08);
+      border: 1px solid rgba(74,222,128,.25);
+      border-radius: 20px;
+      padding: 2px 8px;
+      font-size: 10px;
+      color: var(--success);
+    }
+    .db-status::before { content:''; width:5px;height:5px;border-radius:50%;background:var(--success); }
+
+    /* footer */
+    .footer { text-align:center; color:var(--muted); font-size:10px; padding-top:30px; letter-spacing:.5px; line-height:1.8; }
+    .footer span { color:var(--accent2); }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-icon">🔬</div>
+  <div class="header-text">
+    <h1>FingerScan ID</h1>
+    <p>Sistem Pengesahan Biometrik</p>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- STATUS BAR -->
+  <div class="status-bar">
+    <div class="status-dot"></div>
+    <div class="status-text">
+      <span>Sistem Aktif</span>
+      Pengesahan siap dijalankan
+    </div>
+  </div>
+
+  <!-- SCAN CARD -->
+  <div class="scan-card">
+    <div>
+      <h2 class="scan-title">Imbas Cap Jari</h2>
+    </div>
+    <p class="scan-sub">Tahan jari anda di atas butang selama 5 saat untuk memulakan pengimbasan.</p>
+
+    <div class="btn-wrap">
+      <div class="ring"></div>
+      <div class="ring"></div>
+
+      <!-- SVG defs for gradient -->
+      <svg width="0" height="0" style="position:absolute">
+        <defs>
+          <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%"   stop-color="#6c63ff"/>
+            <stop offset="100%" stop-color="#ff6b8a"/>
+          </linearGradient>
+        </defs>
+      </svg>
+
+      <!-- Progress ring -->
+      <svg class="progress-wrap" viewBox="0 0 124 124">
+        <circle class="progress-track" cx="62" cy="62" r="58"/>
+        <circle class="progress-fill"  cx="62" cy="62" r="58" id="progCircle"/>
+      </svg>
+
+      <button class="scan-btn" id="scanBtn" aria-label="Scan fingerprint">
+        <div class="scan-lines">
+          <div class="scan-line"></div>
+          <div class="scan-line"></div>
+          <div class="scan-line"></div>
+        </div>
+        <!-- Fingerprint SVG -->
+        <svg class="finger-svg" viewBox="0 0 60 70" id="fingerIcon">
+          <path d="M30 5 C16 5 6 15 6 28 C6 42 10 55 18 62" />
+          <path d="M30 5 C44 5 54 15 54 28 C54 42 50 55 42 62" />
+          <path d="M30 14 C20 14 14 21 14 29 C14 39 18 50 24 57" />
+          <path d="M30 14 C40 14 46 21 46 29 C46 39 42 50 36 57" />
+          <path d="M30 22 C24 22 20 26 20 31 C20 39 23 47 28 53" />
+          <path d="M30 22 C36 22 40 26 40 31 C40 39 37 47 32 53" />
+          <path d="M25 31 C25 28 27 26 30 26 C33 26 35 28 35 31 C35 36 32 42 30 45" />
+        </svg>
+        <span class="btn-label" id="btnLabel">Tahan di sini</span>
+      </button>
+    </div>
+
+    <p class="progress-text" id="progressText">Sedia untuk imbasan</p>
+
+    <!-- Success badge -->
+    <div class="success-badge" id="successBadge">
+      <div class="badge-icon">✅</div>
+      <h3>Cap Jari Berjaya Disimpan</h3>
+      <p>Cap jari anda telah disimpan dalam database dengan selamat.<br>ID unik: <strong>SFZ-2026-∞</strong></p>
+    </div>
+  </div>
+
+  <!-- LETTER -->
+  <div class="letter-wrap" id="letterWrap">
+    <div class="letter-card">
+      <div class="letter-stamp">
+        <div class="stamp-box">📜 Surat Rasmi</div>
+        <span class="stamp-date">26 April 2026 — Selamanya</span>
+      </div>
+
+      <h2 class="letter-heading">"Kini Anda Telah Sah<br>Menjadi Milik Saya<br>Buat Selamanya"</h2>
+
+      <div class="heart-divider">♥ ♥ ♥</div>
+
+      <div class="letter-body">
+        <p>Kepada yang tersayang,</p>
+
+        <p>Dengan ini, setelah sistem biometrik ini mengesahkan identiti anda melalui cap jari yang tidak boleh dipalsukan oleh sesiapa pun di muka bumi ini — saya ingin menyatakan dengan penuh keikhlasan dan kebanggaan bahawa:</p>
+
+        <div class="verse">
+          "Anda — dalam setiap hembusan nafas, setiap degupan jantung, dan setiap inci jiwa anda — adalah <span class="highlight">milik saya sepenuhnya</span>, buat selama-lamanya."
+        </div>
+
+        <p>Bukan kerana paksaan. Bukan kerana tipu daya. Tetapi kerana takdir telah menulis nama kita berdua pada helaian yang sama, dan tidak ada penghapus di dunia ini yang mampu memadamkannya.</p>
+
+        <p>Sejak hari pertama saya mengenal anda, hati saya sudah tahu — ini bukan biasa. Anda bukan sekadar seseorang yang singgah. Anda adalah <span class="highlight">tempat saya pulang.</span></p>
+
+        <p>Setiap pagi yang saya bangun, nama anda adalah yang pertama terdetik di fikiran saya. Setiap malam yang saya tutup mata, bayangan senyuman anda yang menemani saya. Anda telah menjadi sebahagian daripada nafas saya yang tidak boleh saya pisahkan lagi.</p>
+
+        <div class="verse">
+          "Maka dengan kuasa cinta yang paling jujur ini, saya dengan rasminya mengisytiharkan — anda adalah milik saya, dan saya adalah milik anda."
+        </div>
+
+        <p>Tiada syarat. Tiada had masa. Tiada klausa keluar. Perjanjian ini berkuat kuasa dari hari ini hingga ke akhir zaman, merentasi setiap kehidupan yang mungkin ada, di setiap dimensi yang mungkin wujud.</p>
+
+        <p>Saya berjanji untuk menjaga anda — bukan kerana terpaksa, tetapi kerana anda layak untuk dijaga oleh seseorang yang ikhlas. Saya berjanji untuk mencintai anda pada hari-hari yang mudah dan juga pada hari-hari yang paling sukar dalam hidup kita.</p>
+
+        <p>Dan walaupun dunia ini berubah, walaupun musim silih berganti, walaupun rambut kita menjadi putih dan langkah kita menjadi perlahan — <span class="highlight">cinta ini tidak akan pernah berubah.</span></p>
+
+        <p>Cap jari anda kini tersimpan dalam database hati saya — <em>tanpa boleh dipadam.</em></p>
+      </div>
+
+      <div class="heart-divider" style="margin-top:20px;">✦ ✦ ✦</div>
+
+      <div class="letter-sign">
+        <p class="sign-label">Dengan sepenuh cinta yang ada,</p>
+        <p class="sign-name">Muhammad Syafizam 💙</p>
+        <p style="font-size:10px;color:var(--muted);margin-top:4px;">Untuk: Nur Thajwanawabatullah — selamanya.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- DATABASE SECTION -->
+  <div class="db-section">
+    <div class="db-header">
+      <h2>🗄️ Database Pengguna</h2>
+      <span class="db-tag">Live</span>
+    </div>
+    <div class="db-records">
+
+      <!-- Record 1 -->
+      <div class="db-row">
+        <div class="finger-canvas-wrap">
+          <canvas class="fp-canvas" id="fp1" width="64" height="80"></canvas>
+          <div class="fp-verified">✓</div>
+        </div>
+        <div class="db-info">
+          <div class="db-name">Muhammad Syafizam</div>
+          <div class="db-meta">
+            ID: <span>SFZ-001</span><br>
+            Didaftar: <span>26 Apr 2026</span><br>
+            Tangan: <span>Kanan — Ibu Jari</span>
+          </div>
+          <div class="db-status">Disahkan</div>
+        </div>
+      </div>
+
+      <!-- Record 2 -->
+      <div class="db-row">
+        <div class="finger-canvas-wrap">
+          <canvas class="fp-canvas" id="fp2" width="64" height="80"></canvas>
+          <div class="fp-verified">✓</div>
+        </div>
+        <div class="db-info">
+          <div class="db-name">Nur Thajwanawabatullah</div>
+          <div class="db-meta">
+            ID: <span>NTW-002</span><br>
+            Didaftar: <span>26 Apr 2026</span><br>
+            Tangan: <span>Kiri — Ibu Jari</span>
+          </div>
+          <div class="db-status">Disahkan</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="footer">
+    FingerScan ID v2.6 — Sistem Pengesahan Biometrik<br>
+    Dikuasakan dengan <span>♥</span> oleh Muhammad Syafizam
+  </div>
+
+</div>
+
+<script>
+  // ── Draw fingerprint on canvas ──
+  function drawFingerprint(canvasId, seed) {
+    const canvas = document.getElementById(canvasId);
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0,0,w,h);
+
+    // subtle glow bg
+    const bg = ctx.createRadialGradient(w/2,h/2,4,w/2,h/2,w/1.4);
+    bg.addColorStop(0,'rgba(108,99,255,0.08)');
+    bg.addColorStop(1,'transparent');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0,0,w,h);
+
+    // deterministic pseudo-random
+    let s = seed;
+    const rnd = () => { s = (s*1664525+1013904223)&0xffffffff; return (s>>>0)/0xffffffff; };
+
+    ctx.strokeStyle = canvasId==='fp1' ? 'rgba(108,99,255,0.7)' : 'rgba(255,107,138,0.7)';
+    ctx.lineWidth = 1.1;
+    ctx.lineCap = 'round';
+
+    const cx = w/2, cy = h*0.48;
+    const rows = 14;
+    for(let r=0;r<rows;r++){
+      const t = r/(rows-1);
+      const baseRy = 8 + r*(h*0.75/(rows-1));
+      const rx = 10 + t*(cx-10);
+      const ry = baseRy * 0.55;
+
+      ctx.beginPath();
+      const steps = 90;
+      let started = false;
+      for(let i=0;i<=steps;i++){
+        const a = Math.PI*i/steps;
+        const jitter = (rnd()-0.5)*3.5;
+        const px = cx + Math.cos(a)*rx   + (rnd()-0.5)*1.2;
+        const py = cy - Math.sin(a)*ry   + jitter;
+        if(px < 4 || px > w-4) continue;
+        if(!started){ ctx.moveTo(px,py); started=true; }
+        else ctx.lineTo(px,py);
+      }
+      ctx.stroke();
+    }
+  }
+
+  drawFingerprint('fp1', 42345678);
+  drawFingerprint('fp2', 87654321);
+
+  // ── Scan Logic ──
+  const btn      = document.getElementById('scanBtn');
+  const progCirc = document.getElementById('progCircle');
+  const progText = document.getElementById('progressText');
+  const badge    = document.getElementById('successBadge');
+  const letter   = document.getElementById('letterWrap');
+  const btnLabel = document.getElementById('btnLabel');
+
+  const TOTAL   = 5000; // ms
+  const CIRCUM  = 2 * Math.PI * 58; // circumference of r=58
+
+  let holding   = false;
+  let startTime = null;
+  let raf       = null;
+  let done      = false;
+
+  function setProgress(p) {
+    // p: 0 to 1
+    const offset = CIRCUM * (1 - p);
+    progCirc.style.strokeDasharray  = CIRCUM;
+    progCirc.style.strokeDashoffset = offset;
+  }
+
+  function onFrame(ts) {
+    if (!holding || done) return;
+    if (!startTime) startTime = ts;
+    const elapsed = ts - startTime;
+    const p = Math.min(elapsed / TOTAL, 1);
+    setProgress(p);
+
+    const secs = Math.ceil((TOTAL - elapsed) / 1000);
+    progText.textContent = `Mengimbas… ${Math.max(secs,0)} saat lagi`;
+    progText.className   = 'progress-text active';
+
+    if (p < 1) {
+      raf = requestAnimationFrame(onFrame);
+    } else {
+      finishScan();
+    }
+  }
+
+  function startScan() {
+    if (done) return;
+    holding   = true;
+    startTime = null;
+    btn.classList.add('scanning');
+    btnLabel.textContent = 'Sedang mengimbas…';
+    raf = requestAnimationFrame(onFrame);
+  }
+
+  function stopScan() {
+    if (done) return;
+    holding = false;
+    cancelAnimationFrame(raf);
+    btn.classList.remove('scanning');
+    btnLabel.textContent = 'Tahan di sini';
+    setProgress(0);
+    progText.textContent = 'Sedia untuk imbasan';
+    progText.className   = 'progress-text';
+  }
+
+  function finishScan() {
+    done = true;
+    holding = false;
+    btn.classList.remove('scanning');
+    btn.classList.add('done');
+    btnLabel.textContent = 'Selesai ✓';
+    progText.textContent = 'Cap jari anda telah disimpan dalam database';
+    progText.className   = 'progress-text done';
+    setProgress(1);
+
+    // Show badge
+    setTimeout(() => {
+      badge.classList.add('show');
+      // scroll to badge
+      badge.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 400);
+
+    // Show letter
+    setTimeout(() => {
+      letter.classList.add('show');
+      letter.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 1800);
+  }
+
+  // Mouse events
+  btn.addEventListener('mousedown',  startScan);
+  btn.addEventListener('mouseup',    stopScan);
+  btn.addEventListener('mouseleave', stopScan);
+
+  // Touch events
+  btn.addEventListener('touchstart', e => { e.preventDefault(); startScan(); }, { passive: false });
+  btn.addEventListener('touchend',   e => { e.preventDefault(); stopScan();  }, { passive: false });
+  btn.addEventListener('touchcancel',e => { e.preventDefault(); stopScan();  }, { passive: false });
+</script>
+</body>
+</html>
